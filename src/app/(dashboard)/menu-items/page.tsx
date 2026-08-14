@@ -11,14 +11,31 @@ export default function MenuItemsPage() {
   const [subCategories, setSubCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   
   // Form State
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [price, setPrice] = useState('');
+  const [size, setSize] = useState('none');
   const [status, setStatus] = useState('Active');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const sizeOptions = [
+    { value: 'none', label: 'None' },
+    { value: 'small', label: 'Small' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'lg', label: 'LG' },
+    { value: 'xl', label: 'XL' },
+  ];
+
+  const formatSize = (value?: string) => {
+    if (!value || value === 'none') return 'None';
+    if (value === 'lg') return 'LG';
+    if (value === 'xl') return 'XL';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
 
   useEffect(() => {
     fetchData();
@@ -56,26 +73,63 @@ export default function MenuItemsPage() {
     }
   };
 
+  const resetForm = () => {
+    setName('');
+    setPrice('');
+    setSize('none');
+    setStatus('Active');
+    setEditingItemId(null);
+    setShowAddForm(false);
+  };
+
+  const handleEditClick = (item: any) => {
+    setName(item.name || '');
+    setCategory(item.mainCategory?._id || item.mainCategory || categories[0]?._id || '');
+    setSubCategory(item.category?._id || item.category || subCategories[0]?._id || '');
+    setPrice(String(item.price ?? ''));
+    setSize(item.size || 'none');
+    setStatus(item.status || 'Active');
+    setEditingItemId(item._id);
+    setShowAddForm(true);
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !price || !category) return;
 
     setIsSubmitting(true);
     try {
-      await axios.post('/api/menu-items', {
-        name,
-        mainCategory: category,
-        category: subCategory,
-        price: Number(price),
-        status
-      });
-      toast.success('Menu item added successfully');
+      if (editingItemId) {
+        await axios.patch(`/api/menu-items/${editingItemId}`, {
+          name,
+          mainCategory: category,
+          category: subCategory,
+          price: Number(price),
+          size,
+          status
+        });
+        toast.success('Menu item updated successfully');
+      } else {
+        await axios.post('/api/menu-items', {
+          name,
+          mainCategory: category,
+          category: subCategory,
+          price: Number(price),
+          size,
+          status
+        });
+        toast.success('Menu item added successfully');
+      }
+
       setName('');
       setPrice('');
+      setSize('none');
+      setStatus('Active');
+      setEditingItemId(null);
       setShowAddForm(false);
-      fetchData(); // Refresh list
+      fetchData();
     } catch (error) {
-      toast.error('Failed to add menu item');
+      toast.error(editingItemId ? 'Failed to update menu item' : 'Failed to add menu item');
     } finally {
       setIsSubmitting(false);
     }
@@ -107,10 +161,10 @@ export default function MenuItemsPage() {
       {showAddForm && (
         <div className="bg-card border border-border rounded-xl shadow-md p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">New Menu Item</h3>
-            <button onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+            <h3 className="text-lg font-semibold">{editingItemId ? 'Edit Menu Item' : 'New Menu Item'}</h3>
+            <button onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
           </div>
-          <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
             <div className="col-span-2 space-y-2">
               <label className="text-sm font-medium">Item Name</label>
               <input 
@@ -159,12 +213,35 @@ export default function MenuItemsPage() {
                 className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" 
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Size</label>
+              <select
+                value={size}
+                onChange={(e) => setSize(e.target.value)}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {sizeOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
             <button 
               type="submit" 
               disabled={isSubmitting}
               className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 h-[38px] flex items-center justify-center w-full"
             >
-              {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save'}
+              {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : editingItemId ? 'Update' : 'Save'}
             </button>
           </form>
         </div>
@@ -179,6 +256,7 @@ export default function MenuItemsPage() {
                 <th className="px-6 py-4 font-medium">Category</th>
                 <th className="px-6 py-4 font-medium">Sub Category</th>
                 <th className="px-6 py-4 font-medium">Price</th>
+                <th className="px-6 py-4 font-medium">Size</th>
                 <th className="px-6 py-4 font-medium">Status</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
@@ -186,14 +264,14 @@ export default function MenuItemsPage() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                     <Loader2 className="animate-spin mx-auto mb-2" size={24} />
                     Loading menu items...
                   </td>
                 </tr>
               ) : menuItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                     No menu items found. Add one above!
                   </td>
                 </tr>
@@ -204,6 +282,7 @@ export default function MenuItemsPage() {
                     <td className="px-6 py-4 text-muted-foreground">{item.mainCategory?.name || 'Uncategorized'}</td>
                     <td className="px-6 py-4 text-muted-foreground">{item.category?.name || 'Uncategorized'}</td>
                     <td className="px-6 py-4 font-medium">Rs. {item.price}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{formatSize(item.size)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                         item.status === 'Active' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
@@ -213,6 +292,7 @@ export default function MenuItemsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
+                        <button onClick={() => handleEditClick(item)} className="p-1.5 text-muted-foreground hover:text-primary rounded-md hover:bg-primary/10 transition-colors"><Edit size={18} /></button>
                         <button onClick={() => handleDelete(item._id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"><Trash2 size={18} /></button>
                       </div>
                     </td>

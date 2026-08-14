@@ -5,6 +5,7 @@ export interface IMenuItem extends Document {
   mainCategory: mongoose.Types.ObjectId;
   category: mongoose.Types.ObjectId;
   price: number;
+  size?: 'none' | 'small' | 'medium' | 'lg' | 'xl';
   discountPrice?: number;
   image?: string;
   description?: string;
@@ -19,6 +20,7 @@ const MenuItemSchema: Schema = new Schema(
     mainCategory: { type: Schema.Types.ObjectId, ref: 'MainCategory', required: true },
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
     price: { type: Number, required: true },
+    size: { type: String, enum: ['none', 'small', 'medium', 'lg', 'xl'], default: 'none' },
     discountPrice: { type: Number },
     image: { type: String },
     description: { type: String },

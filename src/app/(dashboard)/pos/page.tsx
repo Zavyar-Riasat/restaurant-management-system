@@ -332,7 +332,7 @@ export default function POSPage() {
               <Loader2 className="animate-spin text-primary" size={32} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               {activeCategory === 'Deals' ? (
                 deals.length === 0 ? (
                   <div className="col-span-full text-center text-muted-foreground py-12">
@@ -357,7 +357,7 @@ export default function POSPage() {
                           <span className="text-4xl">🔥</span>
                         )}
                       </div>
-                      <h3 className="font-semibold text-foreground truncate">{deal.name}</h3>
+                      <h3 className="text-sm font-semibold text-foreground truncate">{deal.name}</h3>
                       <p className="text-xs text-muted-foreground truncate mb-1">{deal.description || 'Combo Deal'}</p>
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-primary font-bold">Rs. {deal.price}</p>
@@ -367,29 +367,40 @@ export default function POSPage() {
                 )
               ) : (
                 <>
-                  {filteredItems.map(item => (
-                    <div 
-                      key={item._id} 
-                      onClick={() => handleAddToCart(item)}
-                      className="bg-background border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors group relative"
-                    >
-                      <div className="aspect-square bg-secondary rounded-lg mb-3 flex items-center justify-center group-hover:bg-primary/10 transition-colors overflow-hidden">
-                        {item.image ? (
-                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-4xl">{item.category?.icon || '🏷️'}</span>
+                  {filteredItems.map(item => {
+                    const sizeLabel = item.size && item.size !== 'none' ? item.size.toUpperCase() : null;
+
+                    return (
+                      <div 
+                        key={item._id} 
+                        onClick={() => handleAddToCart(item)}
+                        className="bg-background border border-border rounded-xl p-4 cursor-pointer hover:border-primary transition-colors group relative"
+                      >
+                        {sizeLabel && (
+                          <div className="mb-2 flex justify-start">
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary border border-primary/20">
+                              {sizeLabel === 'LG' ? 'LG' : sizeLabel === 'XL' ? 'XL' : sizeLabel}
+                            </span>
+                          </div>
                         )}
+                        <div className="aspect-square bg-secondary rounded-lg mb-3 flex items-center justify-center group-hover:bg-primary/10 transition-colors overflow-hidden">
+                          {item.image ? (
+                             // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl">{item.category?.icon || '🏷️'}</span>
+                          )}
+                        </div>
+                        <h3 className="text-sm font-semibold text-foreground truncate">{item.name}</h3>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-primary font-bold">Rs. {item.discountPrice || item.price}</p>
+                          {item.discountPrice && (
+                            <p className="text-xs text-muted-foreground line-through">Rs. {item.price}</p>
+                          )}
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-foreground truncate">{item.name}</h3>
-                      <div className="flex justify-between items-center mt-1">
-                        <p className="text-primary font-bold">Rs. {item.discountPrice || item.price}</p>
-                        {item.discountPrice && (
-                          <p className="text-xs text-muted-foreground line-through">Rs. {item.price}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {filteredItems.length === 0 && (
                     <div className="col-span-full text-center text-muted-foreground py-12">
                       No menu items found. Add some from the Menu Items tab!
