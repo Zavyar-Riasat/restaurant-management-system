@@ -3,8 +3,27 @@
 import { useEffect, useState } from 'react';
 import { db, type PendingOrder } from '@/lib/localDb';
 import axiosBase from 'axios';
-import { replayQueuedMutations } from '@/lib/offlineSync';
+import { persistGetCache, replayQueuedMutations } from '@/lib/offlineSync';
 import toast from 'react-hot-toast';
+
+function getTodayRangeForOrders() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const toLocalIso = (value: Date) => {
+    return new Date(value.getTime() - value.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  };
+
+  return {
+    startDate: toLocalIso(start),
+    endDate: toLocalIso(end),
+  };
+}
 
 export default function SyncManager() {
   const [isOnline, setIsOnline] = useState(
@@ -45,7 +64,10 @@ export default function SyncManager() {
 
         for (const order of pendingOrders) {
           try {
-            const { tempId: _tempId, createdAt: _createdAt, ...payload } = order as PendingOrder;
+            const payload = { ...(order as PendingOrder) } as Record<string, unknown>;
+            delete payload.id;
+            delete payload.tempId;
+            delete payload.createdAt;
             await rawClient.post('/api/orders', payload);
 
             if (order.id) {
@@ -58,6 +80,24 @@ export default function SyncManager() {
         }
 
         const syncedMutations = await syncQueuedApiMutations();
+
+        try {
+          const { startDate, endDate } = getTodayRangeForOrders();
+          const [ordersRes, customersRes, statsRes] = await Promise.all([
+            rawClient.get(`/api/orders?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`),
+            rawClient.get('/api/customers'),
+            rawClient.get('/api/dashboard/stats'),
+          ]);
+
+          await Promise.all([
+            persistGetCache(`/api/orders?startDate=${startDate}&endDate=${endDate}`, ordersRes.data),
+            persistGetCache('/api/customers', customersRes.data),
+            persistGetCache('/api/dashboard/stats', statsRes.data),
+          ]);
+        } catch (refreshError) {
+          console.warn('Post-sync cache refresh failed:', refreshError);
+        }
+
         const remainingOrders = await db.pendingOrders.count();
         const remainingMutations = await db.syncQueue.count();
 

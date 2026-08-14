@@ -25,8 +25,10 @@ function shouldSkipRequest(requestUrl) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL_ROUTES).catch((err) => console.warn('Cache add failed', err));
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        APP_SHELL_ROUTES.map((url) => cache.add(url))
+      );
     })
   );
   self.skipWaiting();

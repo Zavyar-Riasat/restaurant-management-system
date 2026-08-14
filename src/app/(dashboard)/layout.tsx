@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { LayoutDashboard, ShoppingCart, ListOrdered, Users, Settings, LogOut, Tags, Coffee, Flame } from 'lucide-react';
 import { cookies } from 'next/headers';
 
@@ -83,12 +82,12 @@ export default async function DashboardLayout({
 
 function NavItem({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
-    <Link 
+    <a
       href={href}
       className="flex items-center gap-3 px-3 py-2 text-muted-foreground rounded-lg hover:bg-secondary hover:text-foreground transition-colors"
     >
       {icon}
       <span>{label}</span>
-    </Link>
+    </a>
   );
 }

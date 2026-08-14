@@ -169,22 +169,24 @@ export default function POSPage() {
     };
 
     try {
-      if (!navigator.onLine) {
-        throw new Error('OFFLINE_MODE');
-      }
-      
       const res = await axios.post('/api/orders', orderPayload, { timeout: 5000 });
-      toast.success(`Order ${res.data.orderNumber} placed successfully!`);
+      const queuedOffline = res.headers?.['x-offline-queued'] === 'true';
+      if (queuedOffline) {
+        toast.success(`Order ${res.data.orderNumber} saved offline and queued for sync.`, { duration: 5000 });
+      } else {
+        toast.success(`Order ${res.data.orderNumber} placed successfully!`);
+      }
       dispatch(clearCart());
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress('');
       setAmountPaidInput('');
+      setSelectedDiscountCategories([]);
       
       // Print receipt trigger
       handlePrint(res.data);
     } catch (error: any) {
-      if (error.message === 'OFFLINE_MODE' || error.code === 'ECONNABORTED' || !error.response) {
+      if (error.code === 'ECONNABORTED' || !error.response) {
         // Save to local pendingOrders!
         const tempId = `OFFLINE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const offlineOrder = { ...orderPayload, tempId, createdAt: new Date().toISOString() };
