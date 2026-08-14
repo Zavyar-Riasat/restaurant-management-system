@@ -4,7 +4,8 @@ export interface IDeal extends Document {
   name: string;
   category: mongoose.Types.ObjectId;
   includedItems: {
-    menuItem: mongoose.Types.ObjectId;
+    menuItem?: mongoose.Types.ObjectId | string | null;
+    customName?: string;
     quantity: number;
   }[];
   price: number;
@@ -21,7 +22,8 @@ const DealSchema: Schema = new Schema(
     category: { type: Schema.Types.ObjectId, ref: 'MainCategory', required: true },
     includedItems: [
       {
-        menuItem: { type: Schema.Types.ObjectId, ref: 'MenuItem', required: true },
+        menuItem: { type: Schema.Types.Mixed, default: null },
+        customName: { type: String, default: '' },
         quantity: { type: Number, required: true, default: 1 },
       },
     ],

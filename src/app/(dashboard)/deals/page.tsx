@@ -19,7 +19,7 @@ export default function DealsPage() {
   const [discount, setDiscount] = useState('0');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('Active');
-  const [includedItems, setIncludedItems] = useState<{menuItem: string, quantity: number}[]>([]);
+  const [includedItems, setIncludedItems] = useState<{menuItem: string, customName: string, quantity: number, source: 'menu' | 'custom'}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -47,8 +47,10 @@ export default function DealsPage() {
   };
 
   const handleAddIncludedItem = () => {
-    if (menuItems.length === 0) return;
-    setIncludedItems([...includedItems, { menuItem: menuItems[0]._id, quantity: 1 }]);
+    setIncludedItems([
+      ...includedItems,
+      { menuItem: '', customName: '', quantity: 1, source: 'custom' }
+    ]);
   };
 
   const updateIncludedItem = (index: number, field: string, value: any) => {
@@ -66,8 +68,24 @@ export default function DealsPage() {
   const handleAddDeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !price) return;
-    if (includedItems.length === 0) {
-      toast.error('Please add at least one menu item to the deal');
+
+    const normalizedIncludedItems = includedItems
+      .map(item => {
+        const selectedItem = menuItems.find(mi => mi._id === item.menuItem);
+        const finalName = (item.source === 'custom' ? item.customName : selectedItem?.name || item.customName || '').trim();
+
+        if (!finalName) return null;
+
+        return {
+          menuItem: item.source === 'menu' ? (selectedItem?._id || null) : null,
+          customName: finalName,
+          quantity: Number(item.quantity) || 1
+        };
+      })
+      .filter(Boolean) as Array<{ menuItem: string | null; customName: string; quantity: number }>;
+
+    if (normalizedIncludedItems.length === 0) {
+      toast.error('Please add at least one item to the deal');
       return;
     }
 
@@ -79,7 +97,7 @@ export default function DealsPage() {
         price: Number(price),
         discount: Number(discount),
         description,
-        includedItems,
+        includedItems: normalizedIncludedItems,
         status
       });
       toast.success('Deal added successfully');
@@ -197,15 +215,56 @@ export default function DealsPage() {
               <div className="space-y-2">
                 {includedItems.map((incItem, idx) => (
                   <div key={idx} className="flex gap-2 items-center bg-secondary/50 p-2 rounded-lg border border-border">
-                    <select 
-                      value={incItem.menuItem} 
-                      onChange={(e) => updateIncludedItem(idx, 'menuItem', e.target.value)}
-                      className="flex-1 px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    <select
+                      value={incItem.source}
+                      onChange={(e) => {
+                        const nextSource = e.target.value as 'menu' | 'custom';
+                        const nextItem = { ...incItem, source: nextSource };
+
+                        if (nextSource === 'menu' && menuItems[0]) {
+                          nextItem.menuItem = menuItems[0]._id;
+                          nextItem.customName = menuItems[0].name;
+                        } else if (nextSource === 'custom') {
+                          nextItem.menuItem = '';
+                          nextItem.customName = '';
+                        }
+
+                        updateIncludedItem(idx, 'source', nextSource);
+                        updateIncludedItem(idx, 'menuItem', nextItem.menuItem);
+                        updateIncludedItem(idx, 'customName', nextItem.customName);
+                      }}
+                      className="w-40 px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     >
-                      {menuItems.map(mi => (
-                        <option key={mi._id} value={mi._id}>{mi.name} (Rs. {mi.price})</option>
-                      ))}
+                      <option value="menu">From menu</option>
+                      <option value="custom">Write custom</option>
                     </select>
+
+                    {incItem.source === 'menu' ? (
+                      <select
+                        value={incItem.menuItem}
+                        onChange={(e) => {
+                          const selectedItem = menuItems.find(mi => mi._id === e.target.value);
+                          updateIncludedItem(idx, 'menuItem', e.target.value);
+                          if (selectedItem) {
+                            updateIncludedItem(idx, 'customName', selectedItem.name);
+                          }
+                        }}
+                        className="flex-1 px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {menuItems.map(mi => (
+                          <option key={mi._id} value={mi._id}>{mi.name} (Rs. {mi.price})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={incItem.customName}
+                        onChange={(e) => updateIncludedItem(idx, 'customName', e.target.value)}
+                        placeholder="Type item name manually"
+                        className="flex-1 px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
+
                     <input 
                       type="number" min="1" value={incItem.quantity} onChange={(e) => updateIncludedItem(idx, 'quantity', Number(e.target.value))}
                       className="w-20 px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary text-center"
@@ -271,7 +330,7 @@ export default function DealsPage() {
                     <td className="px-6 py-4">
                       <ul className="text-xs text-muted-foreground list-disc list-inside">
                         {deal.includedItems?.map((item: any, i: number) => (
-                          <li key={i}>{item.quantity}x {item.menuItem?.name || 'Unknown Item'}</li>
+                          <li key={i}>{item.quantity}x {item.customName || item.menuItem?.name || 'Unknown Item'}</li>
                         ))}
                       </ul>
                     </td>
