@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, Loader2, X } from 'lucide-react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import toast from 'react-hot-toast';
 
 export default function SubCategoriesPage() {

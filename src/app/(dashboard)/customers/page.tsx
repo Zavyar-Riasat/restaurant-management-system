@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Eye, Loader2, X, Trash2, CheckCircle } from 'lucide-react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import toast from 'react-hot-toast';
 
 export default function CustomersPage() {

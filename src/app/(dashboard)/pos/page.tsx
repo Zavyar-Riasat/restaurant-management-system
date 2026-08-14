@@ -5,7 +5,7 @@ import { Search, ShoppingBag, Plus, Minus, X, Printer, Loader2 } from 'lucide-re
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { addItem, removeItem, updateQuantity, setDiscount, clearCart } from '@/store/slices/cartSlice';
-import axios from 'axios';
+import axios from '@/lib/http';
 import toast from 'react-hot-toast';
 import { db } from '@/lib/localDb';
 

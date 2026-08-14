@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import toast from 'react-hot-toast';
 import { Loader2, ArrowLeft, RefreshCw, Trash } from 'lucide-react';
 import Link from 'next/link';

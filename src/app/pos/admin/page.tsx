@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import axios from '@/lib/http';
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState('');

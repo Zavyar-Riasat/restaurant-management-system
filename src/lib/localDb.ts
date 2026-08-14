@@ -45,16 +45,34 @@ export interface PendingOrder {
   createdAt: string;
 }
 
+export interface ApiCacheEntry {
+  key: string;
+  data: any;
+  updatedAt: string;
+}
+
+export interface SyncQueueItem {
+  id?: number;
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  url: string;
+  body?: any;
+  createdAt: string;
+}
+
 export const db = new Dexie('RestoPOSLocalDB') as Dexie & {
   categories: EntityTable<LocalCategory, '_id'>;
   menuItems: EntityTable<LocalMenuItem, '_id'>;
   deals: EntityTable<LocalDeal, '_id'>;
   pendingOrders: EntityTable<PendingOrder, 'id'>;
+  apiCache: EntityTable<ApiCacheEntry, 'key'>;
+  syncQueue: EntityTable<SyncQueueItem, 'id'>;
 };
 
-db.version(2).stores({
+db.version(3).stores({
   categories: '_id, name, status',
   menuItems: '_id, name, status',
   deals: '_id, name, status',
-  pendingOrders: '++id, tempId, createdAt'
+  pendingOrders: '++id, tempId, createdAt',
+  apiCache: 'key, updatedAt',
+  syncQueue: '++id, createdAt, method, url'
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '@/lib/http';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { DollarSign, ShoppingBag, CreditCard, Users, Loader2 } from "lucide-react";
 import toast from 'react-hot-toast';
