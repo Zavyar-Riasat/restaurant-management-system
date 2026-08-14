@@ -1,36 +1,77 @@
 const CACHE_NAME = 'restopos-cache-v1';
+const OFFLINE_URL = '/offline.html';
 const urlsToCache = [
   '/',
+  OFFLINE_URL,
+  '/dashboard',
   '/pos',
-  '/dashboard'
+  '/orders',
+  '/customers',
+  '/categories',
+  '/menu-items',
+  '/settings'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache).catch(err => console.warn('Cache add failed', err));
+      return cache.addAll(urlsToCache).catch((err) => console.warn('Cache add failed', err));
     })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only intercept GET requests
-  if (event.request.method !== 'GET') return;
-  // Ignore API requests in the service worker (let Dexie handle API offline capability)
-  if (event.request.url.includes('/api/')) return;
+  const { request } = event;
 
-  // Stale-while-revalidate strategy for the UI
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
+  // Only intercept GET requests and same-origin resources
+  if (request.method !== 'GET') return;
+  if (!request.url.startsWith(self.location.origin)) return;
+  if (request.url.includes('/api/')) return;
+
+  // Navigation requests should not fail when offline; fallback to home page if needed
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match(OFFLINE_URL).then((cachedResponse) => {
+          return cachedResponse || caches.match('/').then((homeResponse) => homeResponse || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } }));
         });
-        return networkResponse;
-      }).catch(() => {
-        // If network fetch fails, we just rely on what's in the cache
-      });
-      return cachedResponse || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.ok) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, networkResponse.clone());
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match('/');
+        });
     })
   );
 });
