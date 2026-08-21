@@ -26,12 +26,13 @@ function getTodayRangeForOrders() {
 }
 
 export default function SyncManager() {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  // Always start as `true` (matches server) — never read navigator.onLine during initial render
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    const rawClient = axiosBase.create({ timeout: 15000 });
+    // Now safe — this runs only on the client, after hydration
+    setIsOnline(navigator.onLine);
+        const rawClient = axiosBase.create({ timeout: 15000 });
 
     const syncQueuedApiMutations = async () => {
       if (!navigator.onLine) return 0;

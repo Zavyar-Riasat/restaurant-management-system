@@ -22,7 +22,7 @@ export default async function DashboardLayout({
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 border-r border-border bg-card flex-col print:hidden">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary">RestoPOS</h1>
+          <h1 className="text-2xl font-bold text-primary">Sangat Rest</h1>
         </div>
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
