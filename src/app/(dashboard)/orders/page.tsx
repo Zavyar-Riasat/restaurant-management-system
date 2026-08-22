@@ -15,9 +15,7 @@ export default function OrdersPage() {
   const [selectedPartition, setSelectedPartition] = useState<string | null>(null);
   const [showUnpaidModal, setShowUnpaidModal] = useState(false);
 
-  // Password-protected delete: which order is pending deletion, the entered
-  // password, and whether we're mid-verification. Kept separate from
-  // everything else so no existing logic is touched.
+  // Password-protected delete
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deletePasswordInput, setDeletePasswordInput] = useState('');
   const [isVerifyingDelete, setIsVerifyingDelete] = useState(false);
@@ -65,16 +63,11 @@ export default function OrdersPage() {
     }
   };
 
-  // Opens the password-confirmation modal for a given order instead of
-  // deleting immediately.
   const requestDelete = (id: string) => {
     setDeleteTargetId(id);
     setDeletePasswordInput('');
   };
 
-  // Verifies the entered password against the admin-configured delete
-  // password (server-side, via /api/settings/verify-delete-password) and
-  // only calls the existing handleDelete if it's correct.
   const handleConfirmDelete = async () => {
     if (!deleteTargetId) return;
     setIsVerifyingDelete(true);
@@ -290,6 +283,9 @@ export default function OrdersPage() {
               ) : (
                 orders.map((order) => {
                   const owes = order.balanceDue !== undefined ? order.balanceDue : Math.max(0, order.grandTotal - (order.amountPaid || 0));
+                  const isUnpaid = order.paymentStatus === 'Unpaid' && owes > 0;
+                  const isPartiallyPaid = order.paymentStatus === 'Partially Paid' && owes > 0;
+                  
                   return (
                   <tr key={order._id} className="hover:bg-secondary/20 transition-colors">
                     <td className="px-6 py-4 font-medium text-foreground">{order.orderNumber}</td>
@@ -321,7 +317,18 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
-                        {order.paymentStatus === 'Partially Paid' && (
+                        {/* Add Payment button for Unpaid orders */}
+                        {isUnpaid && (
+                          <button 
+                            onClick={() => { setPayingOrderId(order._id); setPaymentAmount(owes.toString()); }}
+                            title="Add Payment"
+                            className="p-1.5 text-muted-foreground hover:text-green-600 rounded-md hover:bg-green-100 transition-colors"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                        )}
+                        {/* Add Payment button for Partially Paid orders */}
+                        {isPartiallyPaid && (
                           <button 
                             onClick={() => { setPayingOrderId(order._id); setPaymentAmount(owes.toString()); }}
                             title="Add Payment"
@@ -400,7 +407,15 @@ export default function OrdersPage() {
                 type="number" 
                 value={paymentAmount} 
                 max={owes}
-                onChange={e => setPaymentAmount(e.target.value)}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  if (val > owes) {
+                    setPaymentAmount(owes.toString());
+                    toast.error("Payment cannot exceed outstanding balance");
+                  } else {
+                    setPaymentAmount(e.target.value);
+                  }
+                }}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -633,7 +648,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Printable Receipt (Hidden by default, shown when printing) */}
+      {/* Printable Receipt */}
       {printOrder && (
         <div className="hidden print:block fixed inset-0 bg-white text-black z-[9999] p-8 text-sm font-sans w-full h-full">
           <div className="max-w-md mx-auto">

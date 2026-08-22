@@ -16,6 +16,7 @@ export default function CustomersPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [outstandingBalance, setOutstandingBalance] = useState<string>('');
 
   useEffect(() => {
     fetchCustomers();
@@ -38,11 +39,17 @@ export default function CustomersPage() {
 
     setIsSubmitting(true);
     try {
-      await axios.post('/api/customers', { name, phone, address });
+      await axios.post('/api/customers', { 
+        name, 
+        phone, 
+        address,
+        outstandingBalance: Number(outstandingBalance) || 0
+      });
       toast.success('Customer added successfully');
       setName('');
       setPhone('');
       setAddress('');
+      setOutstandingBalance('');
       setShowAddForm(false);
       fetchCustomers();
     } catch (error) {
@@ -96,16 +103,33 @@ export default function CustomersPage() {
           </div>
           <form onSubmit={handleAddCustomer} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium">Name *</label>
               <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Phone</label>
+              <label className="text-sm font-medium">Phone *</label>
               <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Address</label>
               <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Outstanding Balance (Rs.)</label>
+              <div className="relative">
+                <input 
+                  type="number" 
+                  value={outstandingBalance} 
+                  onChange={(e) => setOutstandingBalance(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  (Previous debt)
+                </span>
+              </div>
             </div>
             <button type="submit" disabled={isSubmitting} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 h-[38px] flex items-center justify-center">
               {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save'}
@@ -121,6 +145,7 @@ export default function CustomersPage() {
               <tr>
                 <th className="px-6 py-4 font-medium">Name</th>
                 <th className="px-6 py-4 font-medium">Phone</th>
+                <th className="px-6 py-4 font-medium">Address</th>
                 <th className="px-6 py-4 font-medium">Outstanding Balance</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
@@ -128,20 +153,23 @@ export default function CustomersPage() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                     <Loader2 className="animate-spin mx-auto mb-2" size={24} />
                     Loading customers...
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">No customers found.</td>
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No customers found.</td>
                 </tr>
               ) : (
                 customers.map((customer) => (
                   <tr key={customer._id} className="hover:bg-secondary/20 transition-colors">
                     <td className="px-6 py-4 font-medium text-foreground">{customer.name}</td>
                     <td className="px-6 py-4 text-muted-foreground">{customer.phone}</td>
+                    <td className="px-6 py-4 text-muted-foreground max-w-[200px] truncate" title={customer.address || '-'}>
+                      {customer.address || '-'}
+                    </td>
                     <td className="px-6 py-4 font-medium">
                       <span className={customer.outstandingBalance > 0 ? 'text-destructive font-bold' : 'text-green-500'}>
                         Rs. {customer.outstandingBalance}
@@ -158,7 +186,7 @@ export default function CustomersPage() {
                             <CheckCircle size={18} />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(customer._id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"><Trash2 size={18} /></button>
+                        {/* <button onClick={() => handleDelete(customer._id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"><Trash2 size={18} /></button> */}
                       </div>
                     </td>
                   </tr>
