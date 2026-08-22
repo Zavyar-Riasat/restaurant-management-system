@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Eye, Printer, Loader2, Trash2, CheckCircle, X } from 'lucide-react';
+import { Search, Filter, Eye, Printer, Loader2, Trash2, CheckCircle, X, Lock } from 'lucide-react';
 import axios from '@/lib/http';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,14 @@ export default function OrdersPage() {
   const [detailsOrder, setDetailsOrder] = useState<any>(null);
   const [selectedPartition, setSelectedPartition] = useState<string | null>(null);
   const [showUnpaidModal, setShowUnpaidModal] = useState(false);
+
+  // Password-protected delete: which order is pending deletion, the entered
+  // password, and whether we're mid-verification. Kept separate from
+  // everything else so no existing logic is touched.
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deletePasswordInput, setDeletePasswordInput] = useState('');
+  const [isVerifyingDelete, setIsVerifyingDelete] = useState(false);
+
   const getTodayStart = () => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -48,13 +56,41 @@ export default function OrdersPage() {
   }, [startDate, endDate]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this order?')) return;
     try {
       await axios.delete(`/api/orders/${id}`);
       toast.success('Order deleted successfully');
       setOrders(orders.filter(o => o._id !== id));
     } catch (error) {
       toast.error('Failed to delete order');
+    }
+  };
+
+  // Opens the password-confirmation modal for a given order instead of
+  // deleting immediately.
+  const requestDelete = (id: string) => {
+    setDeleteTargetId(id);
+    setDeletePasswordInput('');
+  };
+
+  // Verifies the entered password against the admin-configured delete
+  // password (server-side, via /api/settings/verify-delete-password) and
+  // only calls the existing handleDelete if it's correct.
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsVerifyingDelete(true);
+    try {
+      const res = await axios.post('/api/settings/verify-delete-password', { password: deletePasswordInput });
+      if (res.data?.valid) {
+        await handleDelete(deleteTargetId);
+        setDeleteTargetId(null);
+        setDeletePasswordInput('');
+      } else {
+        toast.error('Incorrect password');
+      }
+    } catch (error) {
+      toast.error('Failed to verify password');
+    } finally {
+      setIsVerifyingDelete(false);
     }
   };
 
@@ -296,7 +332,7 @@ export default function OrdersPage() {
                         )}
                         <button className="p-1.5 text-muted-foreground hover:text-blue-600 rounded-md hover:bg-blue-100 transition-colors" onClick={() => setDetailsOrder(order)} title="View Details"><Eye size={18} /></button>
                         <button className="p-1.5 text-muted-foreground hover:text-primary rounded-md hover:bg-primary/10 transition-colors" onClick={() => handlePrintReceipt(order)}><Printer size={18} /></button>
-                        <button onClick={() => handleDelete(order._id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"><Trash2 size={18} /></button>
+                        <button onClick={() => requestDelete(order._id)} title="Delete Order" className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
@@ -307,6 +343,44 @@ export default function OrdersPage() {
         </div>
       </div>
       </div>
+
+      {/* Delete Order - Password Confirmation Modal */}
+      {deleteTargetId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-card p-6 rounded-xl border border-border w-full max-w-sm shadow-xl space-y-4">
+            <h3 className="font-bold text-lg text-destructive flex items-center gap-2">
+              <Lock size={18} /> Confirm Delete
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Enter the admin password to delete this order. This action cannot be undone.
+            </p>
+            <input
+              type="password"
+              autoFocus
+              value={deletePasswordInput}
+              onChange={(e) => setDeletePasswordInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmDelete(); }}
+              placeholder="Admin password"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-destructive"
+            />
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => { setDeleteTargetId(null); setDeletePasswordInput(''); }}
+                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isVerifyingDelete}
+                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isVerifyingDelete ? <Loader2 className="animate-spin" size={16} /> : 'Delete Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal */}
       {payingOrderId && (() => {

@@ -10,6 +10,10 @@ export interface ISetting extends Document {
   currency: string;
   receiptFooter?: string;
   theme: 'Light' | 'Dark' | 'System';
+  // Password the restaurant admin sets to require confirmation before an
+  // order can be deleted (e.g. to stop cashiers from deleting orders).
+  // Left empty by default, meaning no password is required yet.
+  deletePassword?: string;
 }
 
 const SettingSchema: Schema = new Schema(
@@ -23,6 +27,7 @@ const SettingSchema: Schema = new Schema(
     currency: { type: String, default: '$' },
     receiptFooter: { type: String, default: 'Thank you for your visit!' },
     theme: { type: String, enum: ['Light', 'Dark', 'System'], default: 'System' },
+    deletePassword: { type: String, default: '' },
   },
   { timestamps: true }
 );

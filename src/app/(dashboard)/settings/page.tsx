@@ -3,22 +3,34 @@
 import { useState, useEffect } from 'react';
 import axios from '@/lib/http';
 import toast from 'react-hot-toast';
-import { Loader2, Download, Upload, Trash2 } from 'lucide-react';
+import { Loader2, Download, Upload, Trash2, Lock } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Order-delete password (Security card) — kept fully separate from the
+  // General Information form/state above so nothing else is affected.
+  const [deletePasswordInput, setDeletePasswordInput] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const res = await axios.get('/api/settings');
       setSettings(res.data);
-    } catch (error) {
+    } catch (error: any) {
+      // Log the real error so it's visible in the browser console — the
+      // toast alone doesn't tell you *why* the request failed.
+      console.error('GET /api/settings failed:', error?.response?.data || error);
+      setLoadError(error?.response?.data?.error || 'Failed to load settings');
       toast.error('Failed to load settings');
     } finally {
       setLoading(false);
@@ -35,6 +47,24 @@ export default function SettingsPage() {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDeletePassword = async () => {
+    if (!deletePasswordInput.trim()) {
+      toast.error('Please enter a password');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await axios.put('/api/settings', { ...settings, deletePassword: deletePasswordInput.trim() });
+      toast.success('Delete password updated');
+      setDeletePasswordInput('');
+      fetchSettings();
+    } catch (error) {
+      toast.error('Failed to update password');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -88,6 +118,27 @@ export default function SettingsPage() {
     return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>;
   }
 
+  if (!settings) {
+    return (
+      <div className="max-w-4xl">
+        <div className="bg-card border border-destructive/30 rounded-xl shadow-sm p-6 text-center space-y-3">
+          <p className="text-destructive font-medium">
+            Could not load settings{loadError ? `: ${loadError}` : '.'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Check your server terminal for the actual error from GET /api/settings (e.g. a database connection issue).
+          </p>
+          <button
+            onClick={fetchSettings}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -134,6 +185,40 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Security: order-delete password, fully separate from General Information above */}
+      <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+        <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+          <Lock size={20} className="text-primary" /> Security
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Set a password that must be entered before an order can be deleted from the Orders page.
+          This stops cashiers from deleting orders without your approval.
+        </p>
+        <div className="space-y-2 max-w-sm">
+          <label className="text-sm font-medium">Order Delete Password</label>
+          <input
+            type="password"
+            value={deletePasswordInput}
+            onChange={(e) => setDeletePasswordInput(e.target.value)}
+            placeholder={settings.deletePassword ? 'Enter a new password to change it' : 'Set a password'}
+            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <p className="text-xs text-muted-foreground">
+            {settings.deletePassword
+              ? 'A delete password is currently set.'
+              : 'No delete password is set yet — any cashier can delete orders.'}
+          </p>
+          <button
+            type="button"
+            onClick={handleSaveDeletePassword}
+            disabled={savingPassword}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 mt-2"
+          >
+            {savingPassword ? <Loader2 className="animate-spin" size={18} /> : 'Save Password'}
+          </button>
+        </div>
       </div>
       
       <div className="bg-card border border-border rounded-xl shadow-sm p-6 mt-6">

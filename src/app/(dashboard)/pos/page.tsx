@@ -383,7 +383,7 @@ export default function POSPage() {
   // Single Receipt Component with everything inside
   const ReceiptContent = ({ copyLabel }: { copyLabel: string }) => (
     <div className="max-w-md mx-auto" style={{ padding: '20px' }}>
-      <h1 className="text-3xl font-black text-center mb-2">Sangat Restraunt</h1>
+      <h1 className="text-3xl font-black text-center mb-2">Sangat Cafe</h1>
       <p className="text-center text-gray-500 mb-1">Thank you for your visit!</p>
       <p className="text-center text-xs font-semibold uppercase tracking-widest mb-6">{copyLabel}</p>
 
